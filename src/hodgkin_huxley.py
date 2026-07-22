@@ -111,21 +111,24 @@ def initial_state():
 # Selbstgeschriebene Löser (Aufgabe 2a / 2b)
 # ---------------------------------------------------------------------------
 def solve_euler(rhs_func, y0, t):
-    """Explizites Euler-Verfahren.
+    
+    y = np.zeros((len(t), len(y0)))
+    y[0] = y0
 
-    Parameters
-    ----------
-    rhs_func : f(y, t) -> dy/dt
-    y0       : Anfangszustand
-    t        : 1D-Array der Zeitpunkte (gleichmäßig)
+    dt = t[i + 1] - t[i]
 
-    Returns
-    -------
-    y : Array der Form (len(t), len(y0))
-    """
-    # TODO: Euler-Schritt implementieren:  y[i+1] = y[i] + dt * f(y[i], t[i])
-    raise NotImplementedError
+    for i in range(len(t) - 1):
+        y[i + 1] = y[i] + dt * rhs_func(y[i], t[i])
+    return y
 
+t = np.arange(0, 50, 0.01)
+f = lambda y, t: rhs(y, t, I_ext=-5.0)
+y = solve_euler(f, initial_state(), t)
+U = y[:, 0]
+
+plt.plot(t, U)
+plt.xlabel("t [ms]"); plt.ylabel("U [mV]")
+plt.title("HHM, Euler, I₀ = −5 nA (Ruhezustand)")
 
 def solve_rk4(rhs_func, y0, t):
     """Klassisches Runge-Kutta-Verfahren 4. Ordnung (Aufgabe 2b)."""
