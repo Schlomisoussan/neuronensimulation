@@ -114,10 +114,8 @@ def solve_euler(rhs_func, y0, t):
     
     y = np.zeros((len(t), len(y0)))
     y[0] = y0
-
-    dt = t[i + 1] - t[i]
-
     for i in range(len(t) - 1):
+        dt = t[i + 1] - t[i]
         y[i + 1] = y[i] + dt * rhs_func(y[i], t[i])
     return y
 
@@ -130,9 +128,9 @@ def solve_rk4(rhs_func, y0, t):
     for i in range(len(t) - 1):
         dt = t[i + 1] - t[i]
         k1 = dt * rhs_func(y[i], t[i])
-        k2 = dt * rhs_func(y[i] + 0.5 * dt * k1, t[i] + 0.5 * dt)
-        k3 = dt * rhs_func(y[i] + 0.5 * dt * k2, t[i] + 0.5 * dt)
-        k4 = rhs_func(y[i] + dt * k3, t[i] + dt)
-        y[i + 1] = y[i] + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        k2 = dt * rhs_func(y[i] + 0.5 * k1, t[i] + 0.5 * dt)
+        k3 = dt * rhs_func(y[i] + 0.5 * k2, t[i] + 0.5 * dt)
+        k4 = dt * rhs_func(y[i] + k3, t[i] + dt)
+        y[i + 1] = y[i] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
     return y
