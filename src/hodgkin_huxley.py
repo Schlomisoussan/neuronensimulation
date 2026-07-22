@@ -121,16 +121,18 @@ def solve_euler(rhs_func, y0, t):
         y[i + 1] = y[i] + dt * rhs_func(y[i], t[i])
     return y
 
-t = np.arange(0, 50, 0.01)
-f = lambda y, t: rhs(y, t, I_ext=-5.0)
-y = solve_euler(f, initial_state(), t)
-U = y[:, 0]
-
-plt.plot(t, U)
-plt.xlabel("t [ms]"); plt.ylabel("U [mV]")
-plt.title("HHM, Euler, I₀ = −5 nA (Ruhezustand)")
 
 def solve_rk4(rhs_func, y0, t):
-    """Klassisches Runge-Kutta-Verfahren 4. Ordnung (Aufgabe 2b)."""
-    # TODO: k1..k4 berechnen und gewichtet aufsummieren
-    raise NotImplementedError
+
+    y = np.zeros((len(t), len(y0)))
+    y[0] = y0
+
+    for i in range(len(t) - 1):
+        dt = t[i + 1] - t[i]
+        k1 = dt * rhs_func(y[i], t[i])
+        k2 = dt * rhs_func(y[i] + 0.5 * dt * k1, t[i] + 0.5 * dt)
+        k3 = dt * rhs_func(y[i] + 0.5 * dt * k2, t[i] + 0.5 * dt)
+        k4 = rhs_func(y[i] + dt * k3, t[i] + dt)
+        y[i + 1] = y[i] + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+    return y
