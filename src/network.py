@@ -14,27 +14,64 @@ optimalen Startgewichte (Aufgabe 3a) sind noch zu implementieren.
 """
 
 import numpy as np
+from scipy.integrate import odeint
+import hodgkin_huxley as hh
 
 I_0 = -5.0  # minimale/Grundstromstärke [nA] – darf nicht unterschritten werden
-
+I_MAX = 10 # Stromstärke mit der ein Input-Neuron bei Input "1" feuert [nA]
+SPIKE_SCHWELLE = 0.0  # Spannung, ab der ein Neuron feuert [mV]
 
 def clamp_current(I):
     """Stellt sicher, dass die Stromstärke I_0 nicht unterschreitet."""
     return np.maximum(I, I_0)
 
+def solve_hodgkin_huxley(I_ext, t):
+    """Löst das HHM eines einzelnen Neurons und gibt U(t) zurück.
+    I_ext: Zahl (konstanter Strom) oder Funktion I(t)."""
+    y = odeint(hh.rhs, hh.initial_state(), t, args=(I_ext,))
+    return y[:, 0]        # Spalte 0 = Spannung U
 
-def input_current(weights, inputs):
-    """Berechnet die gewichtete Eingangsstromstärke (Gl. 14) mit Minimum I_0."""
-    I = weights @ inputs
-    return clamp_current(I)
 
+def predict(weights, pattern, t=None):
+    if t is None:
+        t = np.arange(0, 50, 0.01)
 
-def predict(weights, pattern):
-    """Ordnet einem Schachbrettmuster ein Ergebnis wahr/falsch zu.
+    # 1. Eingangsströme der 4 Input-Neuronen festlegen
+    #    schwarzes Feld (1) -> I_MAX,  weißes Feld (0) -> I_0
+    I_in = []
+    for i in range(4):
+        if pattern[i] == 1:
+            I_in.append(I_MAX)
+        else:
+            I_in.append(I_0)
 
-    TODO: Muster -> Eingangsströme -> HHM-Aktivität -> Klassifikation.
-    """
-    raise NotImplementedError
+    # 2. Für jedes Input-Neuron das HHM lösen und die Spannung merken
+    U = []
+    for i in range(4):
+        U.append(solve_hodgkin_huxley(I_in[i], t))    # Spalte 0 ist die Spannung
+    U = np.array(U)            # jetzt Form (4, Anzahl Zeitpunkte)
+
+    # 3. Strom ins Output-Neuron nach Gleichung (14): Summe w_i * U_i
+    I_out = np.zeros(len(t))
+    for i in range(4):
+        I_out = I_out + weights[i] * U[i]
+
+    # Minimum I_0 nicht unterschreiten
+    I_out = clamp_current(I_out)
+
+    # 4. Output-Neuron mit diesem zeitabhängigen Strom lösen
+    def I_out_funktion(zeit):
+        return np.interp(zeit, t, I_out)
+
+    U_out = solve_hodgkin_huxley(I_out_funktion, t)
+
+    # 5. Prüfen, ob das Output-Neuron gefeuert hat
+    hat_gefeuert = False
+    for wert in U_out:
+        if wert > SPIKE_SCHWELLE:
+            hat_gefeuert = True
+
+    return hat_gefeuert
 
 
 def train(patterns, targets, learning_rate=0.1, epochs=100, seed=None):
