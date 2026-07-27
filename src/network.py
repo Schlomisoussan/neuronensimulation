@@ -15,7 +15,7 @@ optimalen Startgewichte (Aufgabe 3a) sind noch zu implementieren.
 
 import numpy as np
 from scipy.integrate import odeint
-import hodgkin_huxley as hh
+from . import hodgkin_huxley as hh
 
 I_0 = -5.0  # minimale/Grundstromstärke [nA] – darf nicht unterschritten werden
 I_MAX = 10 # Stromstärke mit der ein Input-Neuron bei Input "1" feuert [nA]
@@ -74,11 +74,45 @@ def predict(weights, pattern, t=None):
     return hat_gefeuert
 
 
-def train(patterns, targets, learning_rate=0.1, epochs=100, seed=None):
-    """Lernalgorithmus: Gewichte je nach Prüfergebnis anpassen (Aufgabe 3d).
+def train(patterns, targets, learning_rate=0.1, epochs=100, seed=None, t=None):
+    """Lernalgorithmus – Aufgabe 3d.
 
-    Startgewichte zufällig in (0, 1]. Rückgabe: gelernte Gewichte plus
-    Verlauf der Fehler und Gewichte für die grafische Auswertung (Aufgabe 3e).
+    patterns : Liste von 0/1-Mustern (je Länge 4)
+    targets  : zugehörige Sollwerte (1 = Schachbrett, 0 = kein Schachbrett)
+    learning_rate : Schrittweite der Gewichtsanpassung
+    epochs   : Anzahl der Durchläufe über die Musterabfolge
+    seed     : für reproduzierbare Startgewichte
+    t        : Zeitgitter für predict (gröber = schneller); Standard 0.05 ms
+
+    Rückgabe:
+        weights           : gelernte Gewichte
+        fehler_verlauf    : Anzahl Fehler pro Durchgang (für 3e)
+        gewichte_verlauf  : Gewichte nach jedem Durchgang, Form (epochs, 4) (für 3e)
     """
-    # TODO: Lernregel implementieren
-    raise NotImplementedError
+    # Gröberes Zeitgitter fürs Training -> viel schneller (predict wird sehr oft aufgerufen)
+    if t is None:
+        t = np.arange(0, 50, 0.05)
+
+    # Startgewichte zufällig in (0, 1], positiv (Leitfähigkeit)
+    rng = np.random.default_rng(seed)
+    weights = rng.uniform(0.0, 1.0, size=4)
+
+    patterns = [np.array(p) for p in patterns]
+    fehler_verlauf = []
+    gewichte_verlauf = []
+
+    for epoch in range(epochs):
+        fehler_summe = 0
+        for p, ziel in zip(patterns, targets):
+            vorhersage = int(predict(weights, p, t=t))   # 1 = feuert, 0 = feuert nicht
+            fehler = ziel - vorhersage                    # -1, 0 oder +1
+            if fehler != 0:
+                # Gewichte der aktiven Felder in Fehlerrichtung anpassen
+                weights = weights + learning_rate * fehler * p
+                # Leitfähigkeit darf nicht negativ werden
+                weights = np.maximum(weights, 0.0)
+                fehler_summe += 1
+        fehler_verlauf.append(fehler_summe)
+        gewichte_verlauf.append(weights.copy())
+
+    return weights, np.array(fehler_verlauf), np.array(gewichte_verlauf)
